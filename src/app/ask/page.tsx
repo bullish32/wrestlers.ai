@@ -70,7 +70,7 @@ export default function AskPage() {
       }}
     >
       <h1 style={{ fontSize: 28, fontWeight: 800 }}>
-        Ask Wrestling AI
+        Ask Wrestlers AI
       </h1>
 
       <div

@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     if (!conversationId) {
       const { data, error } = await supabaseServer
         .from("conversations")
-        .insert({ title: "Ask Wrestling AI" })
+        .insert({ title: "Ask Wrestlers AI" })
         .select("id")
         .single();
 
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
         {
           role: "system",
           content:
-            "You are Ask Wrestling AI. Be coach-like and practical. Include: Key Cues, 2-3 Drills (reps/time), Common Mistakes, and a short Safety note if relevant. Ask ONE clarifying question if needed.",
+            "You are Asking Wrestlers AI. Be coach-like and practical. Include: Key Cues, 2-3 Drills (reps/time), Common Mistakes, and a short Safety note if relevant. Ask ONE clarifying question if needed.",
         },
         { role: "user", content: message },
       ],
