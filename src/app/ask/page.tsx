@@ -2,128 +2,118 @@
 
 import { useState } from "react";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Source = {
+  index: number;
+  similarity: number;
+  preview: string;
+};
 
 export default function AskPage() {
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content:
-        "Ask me anything about wrestling—technique, drills, practice plans, match strategy, or rules.",
-    },
-  ]);
-  const [input, setInput] = useState("");
+  const [message, setMessage] = useState("");
+  const [answer, setAnswer] = useState<string>("");
+  const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
 
-  async function send() {
-    const text = input.trim();
-    if (!text || loading) return;
+  async function onAsk(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setAnswer("");
+    setSources([]);
 
-    setInput("");
-    setMessages((m) => [...m, { role: "user", content: text }]);
+    const trimmed = message.trim();
+    if (!trimmed) return;
+
     setLoading(true);
-
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, conversationId }),
+        body: JSON.stringify({ message: trimmed }),
       });
 
       const data = await res.json();
+      
+      setAnswer(data.answer || "");
+      setSources(data.sources || []);
 
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content:
-            data.answer ??
-            data.error ??
-            `API RESPONSE:\n${JSON.stringify(data, null, 2)}`,
-        },
-      ]);
-
-      if (!conversationId && data.conversationId) {
-        setConversationId(data.conversationId);
+      if (!res.ok) {
+        setError(data?.error || "Request failed");
+        return;
       }
+
+      setAnswer(data?.answer || "");
+      setSources(Array.isArray(data?.sources) ? data.sources : []);
     } catch (err: any) {
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content: `FETCH ERROR:\n${err?.message ?? String(err)}`,
-        },
-      ]);
+      setError(err?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main
-      style={{
-        maxWidth: 860,
-        margin: "0 auto",
-        padding: 16,
-        fontFamily: "system-ui",
-      }}
-    >
-      <h1 style={{ fontSize: 28, fontWeight: 800 }}>
-        Ask Wrestlers AI
-      </h1>
+    <main style={{ maxWidth: 760, margin: "40px auto", padding: "0 16px" }}>
+      <h1 style={{ marginBottom: 8 }}>Ask Wrestlers AI</h1>
+      <p style={{ marginTop: 0, opacity: 0.8 }}>
+        Ask about technique, drills, practice plans, match strategy, and rules.
+      </p>
 
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 12,
-          padding: 12,
-          minHeight: 360,
-          marginTop: 12,
-          whiteSpace: "pre-wrap",
-        }}
-      >
-        {messages.map((m, i) => (
-          <div key={i} style={{ marginBottom: 12 }}>
-            <strong>{m.role === "user" ? "You" : "AI"}:</strong>
-            <div>{m.content}</div>
-          </div>
-        ))}
-        {loading && <div>Thinking…</div>}
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <form onSubmit={onAsk} style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="How do I defend a single leg?"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="e.g., How do I defend a single leg?"
           style={{
             flex: 1,
-            padding: 12,
+            padding: "12px 14px",
             borderRadius: 10,
-            border: "1px solid #ddd",
+            border: "1px solid #333",
+            background: "transparent",
+            color: "inherit",
           }}
-          onKeyDown={(e) => e.key === "Enter" && send()}
         />
         <button
-          onClick={send}
+          type="submit"
           disabled={loading}
           style={{
-            padding: "12px 16px",
+            padding: "12px 14px",
             borderRadius: 10,
-            border: "1px solid #111",
-            background: loading ? "#777" : "#111",
-            color: "#fff",
+            border: "1px solid #333",
+            background: loading ? "#222" : "#111",
+            color: "inherit",
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          Send
+          {loading ? "Thinking..." : "Ask"}
         </button>
-      </div>
+      </form>
 
-      <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
-        Conversation ID: {conversationId ?? "(new)"}
+      {error && (
+        <div style={{ marginTop: 16, padding: 12, border: "1px solid #552", borderRadius: 10 }}>
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* ✅ ANSWER SECTION */}
+      {answer && (
+  <div style={{ marginTop: 18, padding: 14, border: "1px solid #333", borderRadius: 12, whiteSpace: "pre-wrap" }}>
+    {answer}
+  </div>
+)}
+
+{sources.length > 0 && (
+  <div style={{ marginTop: 14, padding: 14, border: "1px solid #333", borderRadius: 12 }}>
+    <div style={{ fontWeight: 700, marginBottom: 10 }}>Sources used</div>
+    {sources.map((s, idx) => (
+      <div key={idx} style={{ marginBottom: 12, opacity: 0.9 }}>
+        <div style={{ fontWeight: 600 }}>
+          Source {s.index ?? idx + 1} (similarity {s.similarity})
+        </div>
+        <div style={{ fontSize: 14, opacity: 0.85 }}>{s.preview}...</div>
       </div>
-    </main>
+    ))}
+  </div>
+)}
+ </main>
   );
 }
